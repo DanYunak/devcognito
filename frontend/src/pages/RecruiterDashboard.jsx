@@ -17,14 +17,18 @@ const EMPTY_VACANCY = {
 export default function RecruiterDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const { user } = useSelector((state) => state.auth);
   const { loading: boardLoading } = useSelector((state) => state.applications);
+  const board = useSelector((state) => state.applications.board);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_VACANCY);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const boardHasCards = Object.values(board).some((col) => col.length > 0);
 
   useEffect(() => {
     dispatch(fetchBoard());
@@ -68,7 +72,10 @@ export default function RecruiterDashboard() {
     if (createVacancy.fulfilled.match(result)) {
       setFormSuccess('Vacancy created successfully!');
       setForm(EMPTY_VACANCY);
-      setTimeout(() => setShowForm(false), 1200);
+      setTimeout(() => {
+        setShowForm(false);
+        setFormSuccess('');
+      }, 1500);
     } else {
       setFormError(result.payload || 'Failed to create vacancy.');
     }
@@ -76,7 +83,6 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-slate-800">🏢 Recruiter Dashboard</h1>
@@ -102,7 +108,6 @@ export default function RecruiterDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Create vacancy form */}
         {showForm && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h2 className="font-semibold text-slate-800 mb-4">Create New Vacancy</h2>
@@ -118,7 +123,10 @@ export default function RecruiterDashboard() {
               </div>
             )}
 
-            <form onSubmit={handleCreateVacancy} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form
+              onSubmit={handleCreateVacancy}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Job Title *
@@ -209,12 +217,10 @@ export default function RecruiterDashboard() {
           </div>
         )}
 
-        {/* Kanban board */}
         <div>
           <h2 className="font-semibold text-slate-800 mb-4">Applications Board</h2>
-          {boardLoading && !Object.values(
-            useSelector((state) => state.applications.board)
-          ).some((col) => col.length > 0) ? (
+
+          {boardLoading && !boardHasCards ? (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
             </div>
