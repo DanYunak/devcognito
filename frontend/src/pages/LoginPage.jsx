@@ -29,7 +29,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-slate-800 mb-1">Welcome back</h1>
-        <p className="text-slate-500 text-sm mb-6">Sign in to the Anonymous Job Board</p>
+        <p className="text-slate-500 text-sm mb-6">Sign in to the DevCognito</p>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">

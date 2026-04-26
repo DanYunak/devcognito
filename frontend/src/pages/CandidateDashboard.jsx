@@ -75,7 +75,7 @@ export default function CandidateDashboard() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-slate-800">🔍 Anonymous Job Board</h1>
+          <h1 className="text-lg font-bold text-slate-800">🔍 DevCognito</h1>
           <p className="text-xs text-slate-500">
             Candidate: {user?.profile?.fullName || user?.email}
           </p>
