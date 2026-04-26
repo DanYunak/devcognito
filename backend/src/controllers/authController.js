@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
+const Company = require('../models/Company');
 const { jwtSecret, jwtExpiresIn } = require('../config/env');
 
 const signToken = (user) =>
@@ -29,11 +30,33 @@ const register = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { role, email, password, profile, company_id } = req.body;
+  const { role, email, password, profile, companyName } = req.body;
 
   const exists = await User.findOne({ email: email.toLowerCase() });
   if (exists) {
     return res.status(409).json({ message: 'Email already in use' });
+  }
+
+  let company_id = null;
+
+  if (role === 'recruiter') {
+    // companyName is guaranteed to be present here because the
+    // validator in authRoutes enforces it for the recruiter role.
+    const normalised = companyName.trim();
+
+    // Case-insensitive search using a collation index-friendly regex.
+    let company = await Company.findOne({
+      name: { $regex: new RegExp(`^${normalised}$`, 'i') }
+    });
+
+    if (!company) {
+      company = await Company.create({
+        name: normalised,
+        verified: false
+      });
+    }
+
+    company_id = company._id;
   }
 
   const hashed = await bcrypt.hash(password, 12);
@@ -43,7 +66,7 @@ const register = async (req, res) => {
     email: email.toLowerCase(),
     password: hashed,
     profile: profile || {},
-    company_id: role === 'recruiter' ? company_id : null
+    company_id
   });
 
   const token = signToken(user);
@@ -89,8 +112,4 @@ const me = async (req, res) => {
   return res.json({ user: toAuthResponse(user) });
 };
 
-module.exports = {
-  register,
-  login,
-  me
-};
+module.exports = { register, login, me };

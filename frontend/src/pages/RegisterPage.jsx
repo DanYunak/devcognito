@@ -13,7 +13,7 @@ const INITIAL_FORM = {
     experienceYears: '',
     expectedSalary: '',
   },
-  company_id: '',
+  companyName: '',
 };
 
 export default function RegisterPage() {
@@ -24,7 +24,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'candidate' ? '/candidate' : '/recruiter', { replace: true });
+      navigate(user.role === 'candidate' ? '/candidate' : '/recruiter', {
+        replace: true,
+      });
     }
     return () => dispatch(clearError());
   }, [user, navigate, dispatch]);
@@ -35,12 +37,19 @@ export default function RegisterPage() {
       const key = name.split('.')[1];
       setForm((prev) => ({ ...prev, profile: { ...prev.profile, [key]: value } }));
     } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
+      // Switching roles should clear the company name to avoid
+      // stale data being sent when toggling back and forth.
+      if (name === 'role') {
+        setForm((prev) => ({ ...prev, role: value, companyName: '' }));
+      } else {
+        setForm((prev) => ({ ...prev, [name]: value }));
+      }
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     const payload = {
       role: form.role,
       email: form.email,
@@ -54,9 +63,14 @@ export default function RegisterPage() {
         expectedSalary: Number(form.profile.expectedSalary) || 0,
       },
     };
-    if (form.role === 'recruiter' && form.company_id) {
-      payload.company_id = form.company_id;
+
+    // Only include companyName in the payload for recruiters.
+    // Sending it for candidates would be ignored by the backend
+    // but keeping the payload clean is good practice.
+    if (form.role === 'recruiter') {
+      payload.companyName = form.companyName.trim();
     }
+
     dispatch(register(payload));
   };
 
@@ -75,7 +89,9 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Role */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">I am a</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              I am a
+            </label>
             <select
               name="role"
               value={form.role}
@@ -87,8 +103,11 @@ export default function RegisterPage() {
             </select>
           </div>
 
+          {/* Full name */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Full Name
+            </label>
             <input
               name="profile.fullName"
               value={form.profile.fullName}
@@ -98,8 +117,11 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Email
+            </label>
             <input
               name="email"
               type="email"
@@ -111,8 +133,11 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Password
+            </label>
             <input
               name="password"
               type="password"
@@ -174,20 +199,27 @@ export default function RegisterPage() {
             </>
           )}
 
-          {/* Recruiter-only fields */}
+          {/* Recruiter-only: company name (replaces raw company_id) */}
           {form.role === 'recruiter' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Company ID{' '}
-                <span className="text-slate-400 font-normal">(MongoDB ObjectId)</span>
+                Company Name
               </label>
               <input
-                name="company_id"
-                value={form.company_id}
+                name="companyName"
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                value={form.companyName}
                 onChange={handleChange}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                placeholder="665f1b2c3e4a5b6c7d8e9f0a"
+                placeholder="Acme Corp"
               />
+              <p className="text-xs text-slate-400 mt-1">
+                An existing company will be matched automatically, or a new one
+                will be created.
+              </p>
             </div>
           )}
 
