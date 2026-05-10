@@ -3,10 +3,12 @@ import api from '../../services/api';
 
 export const fetchMatchedVacancies = createAsyncThunk(
   'vacancies/fetchMatched',
-  async (_, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
     try {
-      const { data } = await api.get('/vacancies/matched');
-      return data.vacancies;
+      const { data } = await api.get('/vacancies/matched', {
+        params: { page, limit }
+      });
+      return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch vacancies');
     }
@@ -15,10 +17,12 @@ export const fetchMatchedVacancies = createAsyncThunk(
 
 export const fetchPublicVacancies = createAsyncThunk(
   'vacancies/fetchPublic',
-  async (_, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
     try {
-      const { data } = await api.get('/vacancies');
-      return data.vacancies;
+      const { data } = await api.get('/vacancies', {
+        params: { page, limit }
+      });
+      return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch vacancies');
     }
@@ -41,7 +45,9 @@ const vacanciesSlice = createSlice({
   name: 'vacancies',
   initialState: {
     list: [],
+    pagination: { total: 0, page: 1, limit: 10, totalPages: 0, hasMore: false },
     loading: false,
+    loadingMore: false,
     error: null,
   },
   reducers: {
@@ -51,28 +57,46 @@ const vacanciesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMatchedVacancies.pending, (state) => {
-        state.loading = true;
+      .addCase(fetchMatchedVacancies.pending, (state, action) => {
+        const page = action.meta.arg?.page ?? 1;
+        if (page === 1) {
+          state.loading = true;
+        } else {
+          state.loadingMore = true;
+        }
         state.error = null;
       })
       .addCase(fetchMatchedVacancies.fulfilled, (state, action) => {
+        const page = action.meta.arg?.page ?? 1;
         state.loading = false;
-        state.list = action.payload;
+        state.loadingMore = false;
+        state.list = page === 1 ? action.payload.vacancies : [...state.list, ...action.payload.vacancies];
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchMatchedVacancies.rejected, (state, action) => {
         state.loading = false;
+        state.loadingMore = false;
         state.error = action.payload;
       })
-      .addCase(fetchPublicVacancies.pending, (state) => {
-        state.loading = true;
+      .addCase(fetchPublicVacancies.pending, (state, action) => {
+        const page = action.meta.arg?.page ?? 1;
+        if (page === 1) {
+          state.loading = true;
+        } else {
+          state.loadingMore = true;
+        }
         state.error = null;
       })
       .addCase(fetchPublicVacancies.fulfilled, (state, action) => {
+        const page = action.meta.arg?.page ?? 1;
         state.loading = false;
-        state.list = action.payload;
+        state.loadingMore = false;
+        state.list = page === 1 ? action.payload.vacancies : [...state.list, ...action.payload.vacancies];
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchPublicVacancies.rejected, (state, action) => {
         state.loading = false;
+        state.loadingMore = false;
         state.error = action.payload;
       })
       .addCase(createVacancy.fulfilled, (state, action) => {

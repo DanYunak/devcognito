@@ -38,7 +38,12 @@ export default function CandidateDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { list: vacancies, loading: vacLoading } = useSelector((state) => state.vacancies);
+  const {
+    list: vacancies,
+    loading: vacLoading,
+    loadingMore: vacLoadingMore,
+    pagination,
+  } = useSelector((state) => state.vacancies);
   const { list: bookmarks, loading: bookmarksLoading } = useSelector(
     (state) => state.bookmarks
   );
@@ -56,7 +61,7 @@ export default function CandidateDashboard() {
   const [withdrawingId, setWithdrawingId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchMatchedVacancies());
+    dispatch(fetchMatchedVacancies({ page: 1, limit: 10 }));
     dispatch(fetchMyApplications());
     dispatch(fetchBookmarks());
   }, [dispatch]);
@@ -158,6 +163,9 @@ export default function CandidateDashboard() {
               <p className="text-center text-slate-500 py-16">No active vacancies found.</p>
             ) : (
               <div className="space-y-4">
+                <p className="text-xs text-slate-500">
+                  Showing {vacancies.length} of {pagination.total} vacancies
+                </p>
                 {vacancies.map((vacancy) => {
                   const alreadyApplied = appliedIds.has(String(vacancy._id));
                   const isBookmarked = bookmarkedIds.has(String(vacancy._id));
@@ -248,6 +256,22 @@ export default function CandidateDashboard() {
                     </div>
                   );
                 })}
+                {pagination.hasMore && (
+                  <button
+                    onClick={() =>
+                      dispatch(
+                        fetchMatchedVacancies({
+                          page: pagination.page + 1,
+                          limit: pagination.limit,
+                        })
+                      )
+                    }
+                    disabled={vacLoadingMore}
+                    className="w-full border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {vacLoadingMore ? 'Loading...' : 'Load more vacancies'}
+                  </button>
+                )}
               </div>
             )}
           </div>

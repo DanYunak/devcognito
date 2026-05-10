@@ -38,11 +38,27 @@ const createVacancy = async (req, res) => {
 };
 
 const getPublicVacancies = async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
+  const skip = (page - 1) * limit;
+
+  const total = await Vacancy.countDocuments({ status: 'active' });
   const vacancies = await Vacancy.find({ status: 'active' })
     .populate('company_id', 'name description verified')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
-  return res.json({ vacancies });
+  return res.json({
+    vacancies,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total
+    }
+  });
 };
 
 const getMatchedVacancies = async (req, res) => {
@@ -50,22 +66,135 @@ const getMatchedVacancies = async (req, res) => {
   if (!candidate || candidate.role !== 'candidate') {
     return res.status(403).json({ message: 'Only candidates can view matched vacancies' });
   }
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
+  const skip = (page - 1) * limit;
 
-  const vacancies = await Vacancy.find({ status: 'active' })
-    .populate('company_id', 'name description verified')
-    .sort({ createdAt: -1 });
+  const candidateSkills = (candidate.profile?.skills || [])
+    .map((skill) => String(skill).toLowerCase().trim())
+    .filter(Boolean);
+  const candidateExperience = Number(candidate.profile?.experienceYears || 0);
+  const candidateSalary = Number(candidate.profile?.expectedSalary || 0);
 
-  const matchedVacancies = vacancies.map((vacancy) => {
-    const vacancyObj = vacancy.toObject();
-    return {
-      ...vacancyObj,
-      matchPercentage: calculateMatchPercentage({ candidate, vacancy: vacancyObj })
-    };
+  const total = await Vacancy.countDocuments({ status: 'active' });
+
+  const vacancies = await Vacancy.aggregate([
+    { $match: { status: 'active' } },
+    {
+      $addFields: {
+        candidateSkills: { $literal: candidateSkills },
+        candidateExperience: { $literal: candidateExperience },
+        candidateSalary: { $literal: candidateSalary }
+      }
+    },
+    {
+      $addFields: {
+        requiredSkillsLower: {
+          $map: {
+            input: '$skills_required',
+            as: 'skill',
+            in: { $toLower: '$$skill' }
+          }
+        }
+      }
+    },
+    {
+      $addFields: {
+        matchedSkillsCount: {
+          $size: {
+            $setIntersection: ['$candidateSkills', '$requiredSkillsLower']
+          }
+        },
+        requiredSkillsCount: { $size: '$requiredSkillsLower' }
+      }
+    },
+    {
+      $addFields: {
+        skillsScore: {
+          $cond: [
+            { $eq: ['$requiredSkillsCount', 0] },
+            60,
+            {
+              $multiply: [
+                { $divide: ['$matchedSkillsCount', '$requiredSkillsCount'] },
+                60
+              ]
+            }
+          ]
+        },
+        experienceScore: {
+          $cond: [
+            { $gte: ['$candidateExperience', '$experience_required'] },
+            20,
+            0
+          ]
+        },
+        salaryScore: {
+          $cond: [
+            {
+              $and: [
+                { $gte: ['$candidateSalary', '$salary_range.min'] },
+                { $lte: ['$candidateSalary', '$salary_range.max'] }
+              ]
+            },
+            20,
+            0
+          ]
+        }
+      }
+    },
+    {
+      $addFields: {
+        matchPercentage: {
+          $round: [{ $add: ['$skillsScore', '$experienceScore', '$salaryScore'] }, 0]
+        }
+      }
+    },
+    { $sort: { matchPercentage: -1, createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: 'companies',
+        localField: 'company_id',
+        foreignField: '_id',
+        pipeline: [
+          { $project: { name: 1, description: 1, verified: 1 } }
+        ],
+        as: 'company_id'
+      }
+    },
+    {
+      $unwind: {
+        path: '$company_id',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $project: {
+        candidateSkills: 0,
+        candidateExperience: 0,
+        candidateSalary: 0,
+        requiredSkillsLower: 0,
+        matchedSkillsCount: 0,
+        requiredSkillsCount: 0,
+        skillsScore: 0,
+        experienceScore: 0,
+        salaryScore: 0
+      }
+    }
+  ]);
+
+  return res.json({
+    vacancies,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total
+    }
   });
-
-  matchedVacancies.sort((a, b) => b.matchPercentage - a.matchPercentage);
-
-  return res.json({ vacancies: matchedVacancies });
 };
 
 const getCandidatesForVacancy = async (req, res) => {
