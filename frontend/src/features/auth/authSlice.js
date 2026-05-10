@@ -149,6 +149,7 @@ const authSlice = createSlice({
         state.resumeUploading = false;
         if (state.user?.profile) {
           state.user.profile.resumePath = action.payload.resumePath;
+          state.user.profile.resumePublicId = action.payload.resumePublicId;
         }
       })
       .addCase(uploadResume.rejected, (state, action) => {

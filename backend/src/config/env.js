@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const required = ['MONGO_URI', 'JWT_SECRET'];
+const required = ['MONGO_URI', 'JWT_SECRET', 'CLOUDINARY_URL'];
 
 required.forEach((key) => {
   if (!process.env[key]) {

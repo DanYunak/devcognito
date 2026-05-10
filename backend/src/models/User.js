@@ -49,6 +49,10 @@ const userSchema = new mongoose.Schema(
         type: String,
         default: null
       },
+      resumePublicId: {
+        type: String,
+        default: null
+      },
       hidden: {
         type: Boolean,
         default: true

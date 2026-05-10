@@ -17,6 +17,7 @@ const sanitizeCandidateForRecruiter = ({ candidate, canReveal = false }) => {
         experienceYears: profile.experienceYears || 0,
         expectedSalary: profile.expectedSalary || 0,
         resumePath: profile.resumePath || null,
+        resumePublicId: profile.resumePublicId || null,
         hidden: false
       }
     };
@@ -33,6 +34,7 @@ const sanitizeCandidateForRecruiter = ({ candidate, canReveal = false }) => {
       experienceYears: profile.experienceYears || 0,
       expectedSalary: profile.expectedSalary || 0,
       resumePath: null,
+      resumePublicId: null,
       hidden: true
     }
   };
