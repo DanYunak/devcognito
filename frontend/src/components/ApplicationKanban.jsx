@@ -47,8 +47,12 @@ function ApplicationCard({ application, onStatusChange }) {
     if (!resumePublicId) return;
     setResumeError('');
     try {
-      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`);
-      window.open(response.data.url, '_blank', 'noopener,noreferrer');
+      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`, {
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       setResumeError('Failed to open resume.');
     }

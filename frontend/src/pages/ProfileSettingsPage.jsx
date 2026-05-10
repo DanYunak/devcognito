@@ -100,8 +100,12 @@ export default function ProfileSettingsPage() {
     const resumePublicId = user?.profile?.resumePublicId;
     if (!resumePublicId) return;
     try {
-      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`);
-      window.open(response.data.url, '_blank', 'noopener,noreferrer');
+      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`, {
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       setResumeFeedback('Failed to open resume.');
     }

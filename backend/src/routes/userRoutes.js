@@ -1,4 +1,5 @@
 const express = require('express');
+const https = require('https');
 const asyncHandler = require('../middleware/asyncHandler');
 const auth = require('../middleware/auth');
 const allowRoles = require('../middleware/roles');
@@ -49,7 +50,21 @@ router.get(
       expires_at: Math.floor(Date.now() / 1000) + 300
     });
 
-    return res.json({ url: signedUrl });
+    return https
+      .get(signedUrl, (cloudRes) => {
+        if (cloudRes.statusCode && cloudRes.statusCode >= 400) {
+          res.status(cloudRes.statusCode).json({ message: 'Resume not available' });
+          cloudRes.resume();
+          return;
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
+        cloudRes.pipe(res);
+      })
+      .on('error', () => {
+        res.status(502).json({ message: 'Resume fetch failed' });
+      });
   })
 );
 
