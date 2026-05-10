@@ -6,6 +6,8 @@ const Application = require('../models/Application');
 const { calculateMatchPercentage } = require('../utils/match');
 const { canRevealCandidatePII, sanitizeCandidateForRecruiter } = require('../utils/anonymity');
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+
 const createVacancy = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -41,9 +43,41 @@ const getPublicVacancies = async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
   const skip = (page - 1) * limit;
+  const { search, skills, expMin, expMax, salaryMin, salaryMax } = req.query;
 
-  const total = await Vacancy.countDocuments({ status: 'active' });
-  const vacancies = await Vacancy.find({ status: 'active' })
+  const query = { status: 'active' };
+
+  if (search) {
+    query.title = { $regex: search, $options: 'i' };
+  }
+
+  if (skills) {
+    const skillsArr = skills
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (skillsArr.length) {
+      query.skills_required = {
+        $in: skillsArr.map((s) => new RegExp(escapeRegex(s), 'i'))
+      };
+    }
+  }
+
+  if (expMin !== undefined || expMax !== undefined) {
+    query.experience_required = {};
+    if (expMin !== undefined && expMin !== '') query.experience_required.$gte = Number(expMin);
+    if (expMax !== undefined && expMax !== '') query.experience_required.$lte = Number(expMax);
+  }
+
+  if (salaryMin !== undefined && salaryMin !== '') {
+    query['salary_range.max'] = { $gte: Number(salaryMin) };
+  }
+  if (salaryMax !== undefined && salaryMax !== '') {
+    query['salary_range.min'] = { $lte: Number(salaryMax) };
+  }
+
+  const total = await Vacancy.countDocuments(query);
+  const vacancies = await Vacancy.find(query)
     .populate('company_id', 'name description verified')
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -69,6 +103,38 @@ const getMatchedVacancies = async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
   const skip = (page - 1) * limit;
+  const { search, skills, expMin, expMax, salaryMin, salaryMax } = req.query;
+
+  const query = { status: 'active' };
+
+  if (search) {
+    query.title = { $regex: search, $options: 'i' };
+  }
+
+  if (skills) {
+    const skillsArr = skills
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (skillsArr.length) {
+      query.skills_required = {
+        $in: skillsArr.map((s) => new RegExp(escapeRegex(s), 'i'))
+      };
+    }
+  }
+
+  if (expMin !== undefined || expMax !== undefined) {
+    query.experience_required = {};
+    if (expMin !== undefined && expMin !== '') query.experience_required.$gte = Number(expMin);
+    if (expMax !== undefined && expMax !== '') query.experience_required.$lte = Number(expMax);
+  }
+
+  if (salaryMin !== undefined && salaryMin !== '') {
+    query['salary_range.max'] = { $gte: Number(salaryMin) };
+  }
+  if (salaryMax !== undefined && salaryMax !== '') {
+    query['salary_range.min'] = { $lte: Number(salaryMax) };
+  }
 
   const candidateSkills = (candidate.profile?.skills || [])
     .map((skill) => String(skill).toLowerCase().trim())
@@ -76,10 +142,10 @@ const getMatchedVacancies = async (req, res) => {
   const candidateExperience = Number(candidate.profile?.experienceYears || 0);
   const candidateSalary = Number(candidate.profile?.expectedSalary || 0);
 
-  const total = await Vacancy.countDocuments({ status: 'active' });
+  const total = await Vacancy.countDocuments(query);
 
   const vacancies = await Vacancy.aggregate([
-    { $match: { status: 'active' } },
+    { $match: query },
     {
       $addFields: {
         candidateSkills: { $literal: candidateSkills },

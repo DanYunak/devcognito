@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchMatchedVacancies } from '../features/vacancies/vacanciesSlice';
+import VacancyFilters from '../components/VacancyFilters';
 import {
   applyToVacancy,
   fetchMyApplications,
@@ -43,6 +44,7 @@ export default function CandidateDashboard() {
     loading: vacLoading,
     loadingMore: vacLoadingMore,
     pagination,
+    filters,
   } = useSelector((state) => state.vacancies);
   const { list: bookmarks, loading: bookmarksLoading } = useSelector(
     (state) => state.bookmarks
@@ -61,7 +63,7 @@ export default function CandidateDashboard() {
   const [withdrawingId, setWithdrawingId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchMatchedVacancies({ page: 1, limit: 10 }));
+    dispatch(fetchMatchedVacancies({ page: 1, limit: 10, filters }));
     dispatch(fetchMyApplications());
     dispatch(fetchBookmarks());
   }, [dispatch]);
@@ -155,6 +157,7 @@ export default function CandidateDashboard() {
         {/* Vacancies Tab */}
         {activeTab === 'vacancies' && (
           <div>
+            <VacancyFilters />
             {vacLoading ? (
               <div className="flex justify-center py-16">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
@@ -263,6 +266,7 @@ export default function CandidateDashboard() {
                         fetchMatchedVacancies({
                           page: pagination.page + 1,
                           limit: pagination.limit,
+                          filters,
                         })
                       )
                     }

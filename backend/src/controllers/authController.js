@@ -130,9 +130,7 @@ const updateMe = async (req, res) => {
     updates['profile.contacts'] = profile.contacts;
   }
   if (profile.skills !== undefined) {
-    updates['profile.skills'] = (profile.skills || [])
-      .map((skill) => String(skill).toLowerCase().trim())
-      .filter(Boolean);
+    updates['profile.skills'] = profile.skills;
   }
   if (profile.experienceYears !== undefined) {
     updates['profile.experienceYears'] = profile.experienceYears;
