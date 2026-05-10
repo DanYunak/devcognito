@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchMatchedVacancies } from '../features/vacancies/vacanciesSlice';
@@ -7,6 +7,11 @@ import {
   fetchMyApplications,
   withdrawApplication,
 } from '../features/applications/applicationsSlice';
+import {
+  addBookmark,
+  fetchBookmarks,
+  removeBookmark,
+} from '../features/bookmarks/bookmarksSlice';
 import { logout } from '../features/auth/authSlice';
 import ChatPanel from '../components/ChatPanel';
 
@@ -34,6 +39,9 @@ export default function CandidateDashboard() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { list: vacancies, loading: vacLoading } = useSelector((state) => state.vacancies);
+  const { list: bookmarks, loading: bookmarksLoading } = useSelector(
+    (state) => state.bookmarks
+  );
   const {
     myApplications,
     loading: appLoading,
@@ -50,10 +58,16 @@ export default function CandidateDashboard() {
   useEffect(() => {
     dispatch(fetchMatchedVacancies());
     dispatch(fetchMyApplications());
+    dispatch(fetchBookmarks());
   }, [dispatch]);
 
   const appliedIds = new Set(
     myApplications.map((a) => String(a.vacancy_id?._id || a.vacancy_id))
+  );
+
+  const bookmarkedIds = useMemo(
+    () => new Set(bookmarks.map((v) => String(v._id))),
+    [bookmarks]
   );
 
   const handleApply = async (vacancyId) => {
@@ -112,7 +126,7 @@ export default function CandidateDashboard() {
       {/* Tabs */}
       <div className="border-b border-slate-200 bg-white px-6">
         <div className="flex gap-6">
-          {['vacancies', 'applications'].map((tab) => (
+          {['vacancies', 'applications', 'bookmarks'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -122,7 +136,11 @@ export default function CandidateDashboard() {
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              {tab === 'vacancies' ? `Matched Vacancies (${vacancies.length})` : `My Applications (${myApplications.length})`}
+              {tab === 'vacancies'
+                ? `Matched Vacancies (${vacancies.length})`
+                : tab === 'applications'
+                ? `My Applications (${myApplications.length})`
+                : `Bookmarks (${bookmarks.length})`}
             </button>
           ))}
         </div>
@@ -142,6 +160,7 @@ export default function CandidateDashboard() {
               <div className="space-y-4">
                 {vacancies.map((vacancy) => {
                   const alreadyApplied = appliedIds.has(String(vacancy._id));
+                  const isBookmarked = bookmarkedIds.has(String(vacancy._id));
                   return (
                     <div
                       key={vacancy._id}
@@ -180,6 +199,22 @@ export default function CandidateDashboard() {
 
                           <MatchBar percent={vacancy.matchPercentage ?? 0} />
                         </div>
+                        <button
+                          onClick={() =>
+                            dispatch(
+                              isBookmarked
+                                ? removeBookmark(vacancy._id)
+                                : addBookmark(vacancy._id)
+                            ).then(() => dispatch(fetchBookmarks()))
+                          }
+                          className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors ${
+                            isBookmarked
+                              ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {isBookmarked ? '★ Saved' : '☆ Save'}
+                        </button>
                       </div>
 
                       {!alreadyApplied ? (
@@ -311,6 +346,69 @@ export default function CandidateDashboard() {
                         )}
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bookmarks Tab */}
+        {activeTab === 'bookmarks' && (
+          <div>
+            {bookmarksLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+              </div>
+            ) : bookmarks.length === 0 ? (
+              <p className="text-center text-slate-500 py-16">No saved vacancies yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {bookmarks.map((vacancy) => (
+                  <div
+                    key={vacancy._id}
+                    className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h2 className="font-semibold text-slate-800">{vacancy.title}</h2>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {vacancy.company_id?.name || 'Unknown company'}
+                          {vacancy.company_id?.verified && (
+                            <span className="ml-1.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                              ✓ Verified
+                            </span>
+                          )}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(vacancy.skills_required || []).map((skill) => (
+                            <span
+                              key={skill}
+                              className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-4 text-xs text-slate-500 mt-2">
+                          <span>📅 {vacancy.experience_required}+ yrs</span>
+                          <span>
+                            💰 ${vacancy.salary_range?.min?.toLocaleString()} – $
+                            {vacancy.salary_range?.max?.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          dispatch(removeBookmark(vacancy._id)).then(() => dispatch(fetchBookmarks()))
+                        }
+                        className="text-xs border border-slate-200 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-50"
+                      >
+                        Remove bookmark
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -9,6 +9,7 @@ const authRoutes = require('./routes/authRoutes');
 const vacancyRoutes = require('./routes/vacancyRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const bookmarkRoutes = require('./routes/bookmarkRoutes');
 const { notFound, errorHandler } = require('./middleware/error');
 const initSocket = require('./socket');
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vacancies', vacancyRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
