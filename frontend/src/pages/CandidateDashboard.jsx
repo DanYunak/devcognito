@@ -236,7 +236,7 @@ export default function CandidateDashboard() {
                                 : addBookmark(vacancy._id)
                             ).then(() => dispatch(fetchBookmarks()))
                           }
-                          className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors ${
+                          className={`text-xs px-3 py-1 rounded-full font-semibold inline-flex items-center justify-center min-w-[76px] transition-colors ${
                             isBookmarked
                               ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                               : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
