@@ -164,7 +164,10 @@ export default function RecruiterDashboard() {
 
   const handleDeleteVacancy = async (vacancyId) => {
     setDeletingId(vacancyId);
-    await dispatch(deleteVacancy(vacancyId));
+    const result = await dispatch(deleteVacancy(vacancyId));
+    if (deleteVacancy.fulfilled.match(result)) {
+      dispatch(fetchBoard());
+    }
     setDeletingId(null);
   };
 
