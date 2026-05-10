@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchMatchedVacancies } from '../features/vacancies/vacanciesSlice';
 import {
   applyToVacancy,
@@ -93,12 +93,20 @@ export default function CandidateDashboard() {
             Candidate: {user?.profile?.fullName || user?.email}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-slate-500 hover:text-red-600 transition-colors"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/settings"
+            className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            Edit Profile
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-slate-500 hover:text-red-600 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       {/* Tabs */}

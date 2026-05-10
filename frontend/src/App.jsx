@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CandidateDashboard from './pages/CandidateDashboard';
 import RecruiterDashboard from './pages/RecruiterDashboard';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
 
 function App() {
   const dispatch = useDispatch();
@@ -32,6 +33,7 @@ function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['candidate']} />}>
         <Route path="/candidate" element={<CandidateDashboard />} />
+        <Route path="/settings" element={<ProfileSettingsPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['recruiter', 'admin']} />}>

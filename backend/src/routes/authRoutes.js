@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const auth = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
-const { register, login, me } = require('../controllers/authController');
+const { register, login, me, updateMe } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -59,5 +59,18 @@ router.post(
 );
 
 router.get('/me', auth, asyncHandler(me));
+
+router.patch(
+  '/me',
+  auth,
+  [
+    body('profile.fullName').optional().isString(),
+    body('profile.contacts').optional().isString(),
+    body('profile.skills').optional().isArray(),
+    body('profile.experienceYears').optional().isNumeric(),
+    body('profile.expectedSalary').optional().isNumeric()
+  ],
+  asyncHandler(updateMe)
+);
 
 module.exports = router;

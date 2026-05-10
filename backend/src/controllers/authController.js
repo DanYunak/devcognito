@@ -112,4 +112,48 @@ const me = async (req, res) => {
   return res.json({ user: toAuthResponse(user) });
 };
 
-module.exports = { register, login, me };
+const updateMe = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { profile = {} } = req.body;
+  const updates = {};
+
+  if (profile.fullName !== undefined) {
+    updates['profile.fullName'] = profile.fullName;
+  }
+  if (profile.contacts !== undefined) {
+    updates['profile.contacts'] = profile.contacts;
+  }
+  if (profile.skills !== undefined) {
+    updates['profile.skills'] = (profile.skills || [])
+      .map((skill) => String(skill).toLowerCase().trim())
+      .filter(Boolean);
+  }
+  if (profile.experienceYears !== undefined) {
+    updates['profile.experienceYears'] = profile.experienceYears;
+  }
+  if (profile.expectedSalary !== undefined) {
+    updates['profile.expectedSalary'] = profile.expectedSalary;
+  }
+
+  let user;
+  if (Object.keys(updates).length > 0) {
+    user = await User.findByIdAndUpdate(req.user.id, { $set: updates }, {
+      new: true,
+      runValidators: true
+    });
+  } else {
+    user = await User.findById(req.user.id);
+  }
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  return res.json({ user: toAuthResponse(user) });
+};
+
+module.exports = { register, login, me, updateMe };
