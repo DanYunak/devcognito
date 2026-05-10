@@ -57,6 +57,14 @@ export default function RecruiterDashboard() {
     dispatch(fetchMyVacancies());
   }, [dispatch]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      dispatch(fetchBoard());
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [dispatch]);
+
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
