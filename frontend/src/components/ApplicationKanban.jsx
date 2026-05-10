@@ -71,6 +71,9 @@ function ApplicationCard({ application, onStatusChange }) {
           ) : (
             <AnonymousBadge />
           )}
+          <p className="text-xs text-slate-500">
+            {application.vacancyTitle || 'Unknown vacancy'}
+          </p>
           {isRevealed && (
             <p className="text-xs text-slate-500">{candidate.email}</p>
           )}
