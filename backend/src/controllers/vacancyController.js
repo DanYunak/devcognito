@@ -416,16 +416,13 @@ const updateVacancyStatus = async (req, res) => {
     return res.json({ vacancy, message: 'Status unchanged' });
   }
 
-  vacancy.status = status;
-  await vacancy.save();
-
   if (status === 'closed') {
     const now = new Date();
     const changedBy = new mongoose.Types.ObjectId(req.user.id);
     await Application.updateMany(
       {
         vacancy_id: vacancyId,
-        status: { $in: ['new', 'interview'] }
+        status: { $in: ['new', 'interview', 'on_hold'] }
       },
       [
         {
@@ -449,6 +446,44 @@ const updateVacancyStatus = async (req, res) => {
       ]
     );
   }
+
+  if (status === 'paused') {
+    const now = new Date();
+    const changedBy = new mongoose.Types.ObjectId(req.user.id);
+    await Application.updateMany(
+      {
+        vacancy_id: vacancyId,
+        status: { $in: ['new', 'interview'] }
+      },
+      [
+        {
+          $set: {
+            status: 'on_hold',
+            status_history: {
+              $concatArrays: [
+                { $ifNull: ['$status_history', []] },
+                [
+                  {
+                    from: '$status',
+                    to: 'on_hold',
+                    changedBy: { $literal: changedBy },
+                    at: { $literal: now }
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    );
+  }
+
+  if (status === 'active') {
+    // no application status changes when reopening
+  }
+
+  vacancy.status = status;
+  await vacancy.save();
 
   return res.json({ vacancy });
 };
@@ -481,7 +516,7 @@ const deleteVacancy = async (req, res) => {
   await Application.updateMany(
     {
       vacancy_id: vacancyId,
-      status: { $in: ['new', 'interview'] }
+      status: { $in: ['new', 'interview', 'on_hold'] }
     },
     [
       {

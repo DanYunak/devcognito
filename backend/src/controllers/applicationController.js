@@ -195,8 +195,8 @@ const getRecruiterApplicationsBoard = async (req, res) => {
   const board = { new: [], interview: [], offer: [], rejected: [] };
 
   applications.forEach((application) => {
-    // withdrawn_by_company applications are intentionally excluded from the
-    // recruiter board — they require no action and belong to deleted vacancies.
+    // withdrawn_by_company and on_hold applications are intentionally excluded from the
+    // recruiter board — they require no action and belong to deleted/paused vacancies.
     if (!board[application.status]) return;
     const candidate = application.candidate_id;
     const reveal = canRevealCandidatePII(application.status);

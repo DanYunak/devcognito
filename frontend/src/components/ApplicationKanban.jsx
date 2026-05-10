@@ -19,6 +19,12 @@ const STATUS_TRANSITIONS = {
   withdrawn_by_company: [],
 };
 
+const formatStatusLabel = (status) =>
+  status
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
 const AnonymousBadge = () => (
   <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
     🔒 Anonymous
@@ -140,7 +146,7 @@ function ApplicationCard({ application, onStatusChange }) {
                   : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
               }`}
             >
-              → {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                → {formatStatusLabel(nextStatus)}
             </button>
           ))}
         </div>

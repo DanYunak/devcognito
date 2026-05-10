@@ -21,6 +21,7 @@ const STATUS_COLORS = {
   interview: 'bg-yellow-100 text-yellow-700',
   offer: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
+  on_hold: 'bg-amber-50 text-amber-700',
   withdrawn_by_company: 'bg-slate-100 text-slate-500',
 };
 
@@ -29,7 +30,8 @@ const STATUS_LABELS = {
   interview: 'Interview',
   offer: 'Offer',
   rejected: 'Not selected',
-  withdrawn_by_company: 'Position no longer available',
+  on_hold: 'Hiring Paused',
+  withdrawn_by_company: 'Vacancy deleted by company',
 };
 
 const MatchBar = ({ percent }) => (
