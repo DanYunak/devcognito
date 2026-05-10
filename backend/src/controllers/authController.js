@@ -1,4 +1,6 @@
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
@@ -156,4 +158,30 @@ const updateMe = async (req, res) => {
   return res.json({ user: toAuthResponse(user) });
 };
 
-module.exports = { register, login, me, updateMe };
+const uploadResume = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'Resume file is required' });
+  }
+
+  const oldPath = user.profile?.resumePath;
+  if (oldPath) {
+    const absoluteOldPath = path.join(__dirname, '..', '..', oldPath);
+    fs.unlink(absoluteOldPath, (err) => {
+      if (err && process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to remove old resume:', err.message);
+      }
+    });
+  }
+
+  user.profile.resumePath = req.file.path;
+  await user.save();
+
+  return res.json({ resumePath: req.file.path });
+};
+
+module.exports = { register, login, me, updateMe, uploadResume };

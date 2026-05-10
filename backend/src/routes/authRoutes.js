@@ -2,7 +2,15 @@ const express = require('express');
 const { body } = require('express-validator');
 const auth = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
-const { register, login, me, updateMe } = require('../controllers/authController');
+const {
+  register,
+  login,
+  me,
+  updateMe,
+  uploadResume
+} = require('../controllers/authController');
+const upload = require('../config/multer');
+const allowRoles = require('../middleware/roles');
 
 const router = express.Router();
 
@@ -71,6 +79,14 @@ router.patch(
     body('profile.expectedSalary').optional().isNumeric()
   ],
   asyncHandler(updateMe)
+);
+
+router.post(
+  '/me/resume',
+  auth,
+  allowRoles('candidate'),
+  upload.single('resume'),
+  asyncHandler(uploadResume)
 );
 
 module.exports = router;

@@ -53,6 +53,22 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+export const uploadResume = createAsyncThunk(
+  'auth/uploadResume',
+  async (file, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+      const { data } = await api.post('/auth/me/resume', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Resume upload failed');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
@@ -61,6 +77,8 @@ const authSlice = createSlice({
     loading: false,
     error: null,
     initialized: false,
+    resumeUploading: false,
+    resumeError: null,
   },
   reducers: {
     logout(state) {
@@ -122,6 +140,20 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(uploadResume.pending, (state) => {
+        state.resumeUploading = true;
+        state.resumeError = null;
+      })
+      .addCase(uploadResume.fulfilled, (state, action) => {
+        state.resumeUploading = false;
+        if (state.user?.profile) {
+          state.user.profile.resumePath = action.payload.resumePath;
+        }
+      })
+      .addCase(uploadResume.rejected, (state, action) => {
+        state.resumeUploading = false;
+        state.resumeError = action.payload;
       });
   },
 });

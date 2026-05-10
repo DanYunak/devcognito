@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import api from '../services/api';
 import { updateStatus } from '../features/applications/applicationsSlice';
 import ChatPanel from './ChatPanel';
 
@@ -26,12 +27,30 @@ const AnonymousBadge = () => (
 function ApplicationCard({ application, onStatusChange }) {
   const [expanded, setExpanded] = useState(false);
   const [openChat, setOpenChat] = useState(false);
+  const [resumeError, setResumeError] = useState('');
   const { loading } = useSelector((state) => state.applications);
 
   const { candidate } = application;
   const isRevealed = !candidate?.profile?.hidden;
   const chatAllowed = application.status === 'interview' || application.status === 'offer';
   const transitions = STATUS_TRANSITIONS[application.status] || [];
+
+  const handleViewResume = async () => {
+    const resumePath = candidate?.profile?.resumePath;
+    if (!resumePath) return;
+    const filename = resumePath.split('/').pop();
+    setResumeError('');
+    try {
+      const response = await api.get(`/users/resume/${filename}`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setResumeError('Failed to open resume.');
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2">
@@ -83,6 +102,18 @@ function ApplicationCard({ application, onStatusChange }) {
           )}
           {isRevealed && candidate.profile.contacts && (
             <p>📞 {candidate.profile.contacts}</p>
+          )}
+          {isRevealed && candidate.profile.resumePath && (
+            <button
+              type="button"
+              onClick={handleViewResume}
+              className="text-indigo-600 hover:underline"
+            >
+              View Resume PDF
+            </button>
+          )}
+          {resumeError && (
+            <p className="text-xs text-red-600">{resumeError}</p>
           )}
           <p className="text-slate-400">
             Applied {new Date(application.createdAt).toLocaleDateString()}

@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema(
         default: 0,
         min: 0
       },
+      resumePath: {
+        type: String,
+        default: null
+      },
       hidden: {
         type: Boolean,
         default: true

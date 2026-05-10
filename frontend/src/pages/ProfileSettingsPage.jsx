@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { updateProfile, clearError } from '../features/auth/authSlice';
+import {
+  updateProfile,
+  uploadResume,
+  clearError,
+} from '../features/auth/authSlice';
+import api from '../services/api';
 
 const emptyForm = {
   fullName: '',
@@ -14,10 +19,18 @@ const emptyForm = {
 export default function ProfileSettingsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, loading, error } = useSelector((state) => state.auth);
+  const {
+    user,
+    loading,
+    error,
+    resumeUploading,
+    resumeError,
+  } = useSelector((state) => state.auth);
 
   const [form, setForm] = useState(emptyForm);
   const [success, setSuccess] = useState(false);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeFeedback, setResumeFeedback] = useState('');
 
   useEffect(() => {
     if (user?.profile) {
@@ -56,6 +69,46 @@ export default function ProfileSettingsPage() {
     if (result.meta.requestStatus === 'fulfilled') {
       setSuccess(true);
       navigate('/candidate');
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    setResumeFeedback('');
+    setResumeFile(file || null);
+  };
+
+  const handleUpload = async () => {
+    setResumeFeedback('');
+    if (!resumeFile) {
+      setResumeFeedback('Please select a PDF file.');
+      return;
+    }
+    if (resumeFile.size > 5 * 1024 * 1024) {
+      setResumeFeedback('File size must be under 5MB.');
+      return;
+    }
+
+    const result = await dispatch(uploadResume(resumeFile));
+    if (result.meta.requestStatus === 'fulfilled') {
+      setResumeFeedback('Resume uploaded successfully.');
+      setResumeFile(null);
+    }
+  };
+
+  const handleViewResume = async () => {
+    const resumePath = user?.profile?.resumePath;
+    if (!resumePath) return;
+    const filename = resumePath.split('/').pop();
+    try {
+      const response = await api.get(`/users/resume/${filename}`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setResumeFeedback('Failed to open resume.');
     }
   };
 
@@ -169,6 +222,47 @@ export default function ProfileSettingsPage() {
               {loading ? 'Saving…' : 'Save changes'}
             </button>
           </form>
+
+          <div className="mt-8 border-t border-slate-200 pt-6">
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">Resume</h3>
+            <div className="text-sm text-slate-600 mb-3">
+              {user?.profile?.resumePath ? (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span>
+                    Current resume: {user.profile.resumePath.split('/').pop()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleViewResume}
+                    className="text-indigo-600 hover:underline"
+                  >
+                    View
+                  </button>
+                </div>
+              ) : (
+                <span>No resume uploaded.</span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <input type="file" accept=".pdf" onChange={handleFileChange} />
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={resumeUploading}
+                className="text-sm border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-60"
+              >
+                {resumeUploading ? 'Uploading…' : 'Upload Resume'}
+              </button>
+            </div>
+
+            {resumeFeedback && (
+              <p className="mt-2 text-xs text-slate-500">{resumeFeedback}</p>
+            )}
+            {resumeError && (
+              <p className="mt-2 text-xs text-red-600">{resumeError}</p>
+            )}
+          </div>
         </div>
       </main>
     </div>
