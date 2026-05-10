@@ -212,10 +212,38 @@ const getRecruiterApplicationsBoard = async (req, res) => {
   return res.json({ board });
 };
 
+const withdrawApplication = async (req, res) => {
+  const { applicationId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(applicationId)) {
+    return res.status(400).json({ message: 'Invalid application id' });
+  }
+
+  const application = await Application.findById(applicationId);
+  if (!application) {
+    return res.status(404).json({ message: 'Application not found' });
+  }
+
+  if (String(application.candidate_id) !== String(req.user.id)) {
+    return res.status(403).json({ message: 'Forbidden for this application' });
+  }
+
+  if (application.status !== 'new') {
+    return res.status(409).json({
+      message: `Cannot withdraw application with status "${application.status}". Only new applications can be withdrawn.`
+    });
+  }
+
+  await application.deleteOne();
+
+  return res.json({ message: 'Application withdrawn successfully' });
+};
+
 module.exports = {
   applyToVacancy,
   getMyApplications,
   getApplicationsForVacancy,
   updateApplicationStatus,
-  getRecruiterApplicationsBoard
+  getRecruiterApplicationsBoard,
+  withdrawApplication
 };

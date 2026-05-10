@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchMatchedVacancies } from '../features/vacancies/vacanciesSlice';
-import { applyToVacancy, fetchMyApplications } from '../features/applications/applicationsSlice';
+import {
+  applyToVacancy,
+  fetchMyApplications,
+  withdrawApplication,
+} from '../features/applications/applicationsSlice';
 import { logout } from '../features/auth/authSlice';
 import ChatPanel from '../components/ChatPanel';
 
@@ -40,6 +44,8 @@ export default function CandidateDashboard() {
   const [applyingTo, setApplyingTo] = useState(null);
   const [openChatApp, setOpenChatApp] = useState(null);
   const [activeTab, setActiveTab] = useState('vacancies');
+  const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
+  const [withdrawingId, setWithdrawingId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMatchedVacancies());
@@ -66,6 +72,13 @@ export default function CandidateDashboard() {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  const handleWithdraw = async (applicationId) => {
+    setWithdrawingId(applicationId);
+    await dispatch(withdrawApplication(applicationId));
+    setWithdrawingId(null);
+    setWithdrawConfirmId(null);
   };
 
   const chatAllowed = (status) => status === 'interview' || status === 'offer';
@@ -255,6 +268,39 @@ export default function CandidateDashboard() {
                     {openChatApp === app._id && (
                       <div className="mt-3">
                         <ChatPanel applicationId={app._id} />
+                      </div>
+                    )}
+
+                    {app.status === 'new' && (
+                      <div className="mt-3">
+                        {withdrawConfirmId === app._id ? (
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-xs text-slate-500">
+                              Withdraw this application?
+                            </span>
+                            <button
+                              onClick={() => handleWithdraw(app._id)}
+                              disabled={withdrawingId === app._id}
+                              className="text-xs border border-red-200 text-red-700 px-3 py-1 rounded-full hover:bg-red-50 disabled:opacity-60"
+                            >
+                              {withdrawingId === app._id ? 'Withdrawing…' : 'Yes, withdraw'}
+                            </button>
+                            <button
+                              onClick={() => setWithdrawConfirmId(null)}
+                              disabled={withdrawingId === app._id}
+                              className="text-xs border border-slate-200 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setWithdrawConfirmId(app._id)}
+                            className="text-xs border border-red-200 text-red-700 px-3 py-1 rounded-full hover:bg-red-50"
+                          >
+                            Withdraw application
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

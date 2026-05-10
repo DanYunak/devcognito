@@ -8,7 +8,8 @@ const {
   getMyApplications,
   getApplicationsForVacancy,
   updateApplicationStatus,
-  getRecruiterApplicationsBoard
+  getRecruiterApplicationsBoard,
+  withdrawApplication
 } = require('../controllers/applicationController');
 
 const router = express.Router();
@@ -38,6 +39,13 @@ router.patch(
   allowRoles('recruiter', 'admin'),
   [body('status').isIn(['new', 'interview', 'offer', 'rejected'])],
   asyncHandler(updateApplicationStatus)
+);
+
+router.delete(
+  '/:applicationId',
+  auth,
+  allowRoles('candidate'),
+  asyncHandler(withdrawApplication)
 );
 
 module.exports = router;

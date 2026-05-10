@@ -49,6 +49,18 @@ export const updateStatus = createAsyncThunk(
   }
 );
 
+export const withdrawApplication = createAsyncThunk(
+  'applications/withdraw',
+  async (applicationId, { rejectWithValue }) => {
+    try {
+      await api.delete(`/applications/${applicationId}`);
+      return applicationId;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to withdraw application');
+    }
+  }
+);
+
 const applicationsSlice = createSlice({
   name: 'applications',
   initialState: {
@@ -112,6 +124,11 @@ const applicationsSlice = createSlice({
         if (state.board[updated.status]) {
           state.board[updated.status].unshift(updated);
         }
+      })
+      .addCase(withdrawApplication.fulfilled, (state, action) => {
+        state.myApplications = state.myApplications.filter(
+          (app) => String(app._id) !== String(action.payload)
+        );
       });
   },
 });
