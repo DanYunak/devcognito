@@ -115,8 +115,9 @@ const applicationsSlice = createSlice({
       .addCase(updateStatus.fulfilled, (state, action) => {
         const updated = action.payload;
         // Remove from all columns then insert into correct one
-        const columns = ['new', 'interview', 'offer', 'rejected'];
+        const columns = ['new', 'interview', 'offer', 'rejected', 'withdrawn_by_company'];
         columns.forEach((col) => {
+          if (!state.board[col]) return;
           state.board[col] = state.board[col].filter(
             (a) => String(a._id) !== String(updated._id)
           );

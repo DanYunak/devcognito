@@ -18,19 +18,19 @@ const applicationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['new', 'interview', 'offer', 'rejected'],
+      enum: ['new', 'interview', 'offer', 'rejected', 'withdrawn_by_company'],
       default: 'new'
     },
     status_history: [
       {
         from: {
           type: String,
-          enum: ['new', 'interview', 'offer', 'rejected', null],
+          enum: ['new', 'interview', 'offer', 'rejected', 'withdrawn_by_company', null],
           default: null
         },
         to: {
           type: String,
-          enum: ['new', 'interview', 'offer', 'rejected'],
+          enum: ['new', 'interview', 'offer', 'rejected', 'withdrawn_by_company'],
           required: true
         },
         changedBy: {

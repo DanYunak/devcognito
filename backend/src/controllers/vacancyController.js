@@ -33,7 +33,8 @@ const createVacancy = async (req, res) => {
     skills_required,
     experience_required,
     salary_range,
-    status
+    status,
+    deletedAt: null
   });
 
   return res.status(201).json({ vacancy });
@@ -45,7 +46,7 @@ const getPublicVacancies = async (req, res) => {
   const skip = (page - 1) * limit;
   const { search, skills, expMin, expMax, salaryMin, salaryMax } = req.query;
 
-  const query = { status: 'active' };
+  const query = { status: 'active', deletedAt: null };
 
   if (search) {
     query.title = { $regex: search, $options: 'i' };
@@ -105,7 +106,7 @@ const getMatchedVacancies = async (req, res) => {
   const skip = (page - 1) * limit;
   const { search, skills, expMin, expMax, salaryMin, salaryMax } = req.query;
 
-  const query = { status: 'active' };
+  const query = { status: 'active', deletedAt: null };
 
   if (search) {
     query.title = { $regex: search, $options: 'i' };
@@ -263,6 +264,37 @@ const getMatchedVacancies = async (req, res) => {
   });
 };
 
+const getMyVacancies = async (req, res) => {
+  if (req.user.role !== 'recruiter' && req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit, 10) || 20);
+  const skip = (page - 1) * limit;
+
+  const query = req.user.role === 'admin'
+    ? { deletedAt: null }
+    : { recruiter_id: req.user.id, deletedAt: null };
+
+  const total = await Vacancy.countDocuments(query);
+  const vacancies = await Vacancy.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  return res.json({
+    vacancies,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total
+    }
+  });
+};
+
 const getCandidatesForVacancy = async (req, res) => {
   const { vacancyId } = req.params;
 
@@ -270,7 +302,8 @@ const getCandidatesForVacancy = async (req, res) => {
     return res.status(400).json({ message: 'Invalid vacancy id' });
   }
 
-  const vacancy = await Vacancy.findById(vacancyId).populate('company_id', 'name verified');
+  const vacancy = await Vacancy.findOne({ _id: vacancyId, deletedAt: null })
+    .populate('company_id', 'name verified');
   if (!vacancy) {
     return res.status(404).json({ message: 'Vacancy not found' });
   }
@@ -311,9 +344,177 @@ const getCandidatesForVacancy = async (req, res) => {
   });
 };
 
+const updateVacancy = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { vacancyId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(vacancyId)) {
+    return res.status(400).json({ message: 'Invalid vacancy id' });
+  }
+
+  const vacancy = await Vacancy.findOne({ _id: vacancyId, deletedAt: null });
+  if (!vacancy) {
+    return res.status(404).json({ message: 'Vacancy not found' });
+  }
+
+  const isOwnerRecruiter = String(vacancy.recruiter_id) === req.user.id;
+  const isAdmin = req.user.role === 'admin';
+
+  if (!isOwnerRecruiter && !isAdmin) {
+    return res.status(403).json({ message: 'You can update only your own vacancies' });
+  }
+
+  const {
+    title,
+    skills_required,
+    experience_required,
+    salary_range
+  } = req.body;
+
+  if (title !== undefined) vacancy.title = title;
+  if (skills_required !== undefined) vacancy.skills_required = skills_required;
+  if (experience_required !== undefined) vacancy.experience_required = experience_required;
+  if (salary_range?.min !== undefined) vacancy.salary_range.min = salary_range.min;
+  if (salary_range?.max !== undefined) vacancy.salary_range.max = salary_range.max;
+
+  await vacancy.save();
+
+  return res.json({ vacancy });
+};
+
+const updateVacancyStatus = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { vacancyId } = req.params;
+  const { status } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(vacancyId)) {
+    return res.status(400).json({ message: 'Invalid vacancy id' });
+  }
+
+  const vacancy = await Vacancy.findOne({ _id: vacancyId, deletedAt: null });
+  if (!vacancy) {
+    return res.status(404).json({ message: 'Vacancy not found' });
+  }
+
+  const isOwnerRecruiter = String(vacancy.recruiter_id) === req.user.id;
+  const isAdmin = req.user.role === 'admin';
+
+  if (!isOwnerRecruiter && !isAdmin) {
+    return res.status(403).json({ message: 'You can update only your own vacancies' });
+  }
+
+  const previousStatus = vacancy.status;
+  if (previousStatus === status) {
+    return res.json({ vacancy, message: 'Status unchanged' });
+  }
+
+  vacancy.status = status;
+  await vacancy.save();
+
+  if (status === 'closed') {
+    const now = new Date();
+    const changedBy = new mongoose.Types.ObjectId(req.user.id);
+    await Application.updateMany(
+      {
+        vacancy_id: vacancyId,
+        status: { $in: ['new', 'interview'] }
+      },
+      [
+        {
+          $set: {
+            status: 'rejected',
+            status_history: {
+              $concatArrays: [
+                { $ifNull: ['$status_history', []] },
+                [
+                  {
+                    from: '$status',
+                    to: 'rejected',
+                    changedBy: { $literal: changedBy },
+                    at: { $literal: now }
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    );
+  }
+
+  return res.json({ vacancy });
+};
+
+const deleteVacancy = async (req, res) => {
+  const { vacancyId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(vacancyId)) {
+    return res.status(400).json({ message: 'Invalid vacancy id' });
+  }
+
+  const vacancy = await Vacancy.findOne({ _id: vacancyId, deletedAt: null });
+  if (!vacancy) {
+    return res.status(404).json({ message: 'Vacancy not found' });
+  }
+
+  const isOwnerRecruiter = String(vacancy.recruiter_id) === req.user.id;
+  const isAdmin = req.user.role === 'admin';
+
+  if (!isOwnerRecruiter && !isAdmin) {
+    return res.status(403).json({ message: 'You can delete only your own vacancies' });
+  }
+
+  vacancy.deletedAt = new Date();
+  vacancy.status = 'closed';
+  await vacancy.save();
+
+  const now = new Date();
+  const changedBy = new mongoose.Types.ObjectId(req.user.id);
+  await Application.updateMany(
+    {
+      vacancy_id: vacancyId,
+      status: { $in: ['new', 'interview'] }
+    },
+    [
+      {
+        $set: {
+          status: 'withdrawn_by_company',
+          status_history: {
+            $concatArrays: [
+              { $ifNull: ['$status_history', []] },
+              [
+                {
+                  from: '$status',
+                  to: 'withdrawn_by_company',
+                  changedBy: { $literal: changedBy },
+                  at: { $literal: now }
+                }
+              ]
+            ]
+          }
+        }
+      }
+    ]
+  );
+
+  return res.json({ vacancy });
+};
+
 module.exports = {
   createVacancy,
   getPublicVacancies,
   getMatchedVacancies,
-  getCandidatesForVacancy
+  getMyVacancies,
+  getCandidatesForVacancy,
+  updateVacancy,
+  updateVacancyStatus,
+  deleteVacancy
 };

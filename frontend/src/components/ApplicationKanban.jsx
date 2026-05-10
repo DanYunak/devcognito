@@ -16,6 +16,7 @@ const STATUS_TRANSITIONS = {
   interview: ['offer', 'rejected'],
   offer: ['rejected'],
   rejected: [],
+  withdrawn_by_company: [],
 };
 
 const AnonymousBadge = () => (

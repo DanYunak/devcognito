@@ -57,14 +57,68 @@ export const createVacancy = createAsyncThunk(
   }
 );
 
+export const fetchMyVacancies = createAsyncThunk(
+  'vacancies/fetchMine',
+  async ({ page = 1, limit = 20 } = {}, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      params.set('page', page);
+      params.set('limit', limit);
+      const { data } = await api.get(`/vacancies/mine?${params.toString()}`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch vacancies');
+    }
+  }
+);
+
+export const updateVacancy = createAsyncThunk(
+  'vacancies/update',
+  async ({ vacancyId, updates }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(`/vacancies/${vacancyId}`, updates);
+      return data.vacancy;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update vacancy');
+    }
+  }
+);
+
+export const updateVacancyStatus = createAsyncThunk(
+  'vacancies/updateStatus',
+  async ({ vacancyId, status }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(`/vacancies/${vacancyId}/status`, { status });
+      return data.vacancy;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update vacancy status');
+    }
+  }
+);
+
+export const deleteVacancy = createAsyncThunk(
+  'vacancies/delete',
+  async (vacancyId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(`/vacancies/${vacancyId}`);
+      return data.vacancy;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to delete vacancy');
+    }
+  }
+);
+
 const vacanciesSlice = createSlice({
   name: 'vacancies',
   initialState: {
     list: [],
+    myVacancies: [],
+    myPagination: { total: 0, page: 1, limit: 20, totalPages: 0, hasMore: false },
     pagination: { total: 0, page: 1, limit: 10, totalPages: 0, hasMore: false },
     filters: { search: '', skills: '', expMin: '', expMax: '', salaryMin: '', salaryMax: '' },
     loading: false,
     loadingMore: false,
+    loadingMine: false,
     error: null,
   },
   reducers: {
@@ -126,6 +180,38 @@ const vacanciesSlice = createSlice({
       })
       .addCase(createVacancy.fulfilled, (state, action) => {
         state.list.unshift(action.payload);
+        state.myVacancies.unshift(action.payload);
+      })
+      .addCase(fetchMyVacancies.pending, (state) => {
+        state.loadingMine = true;
+        state.error = null;
+      })
+      .addCase(fetchMyVacancies.fulfilled, (state, action) => {
+        state.loadingMine = false;
+        state.myVacancies = action.payload.vacancies;
+        state.myPagination = action.payload.pagination;
+      })
+      .addCase(fetchMyVacancies.rejected, (state, action) => {
+        state.loadingMine = false;
+        state.error = action.payload;
+      })
+      .addCase(updateVacancy.fulfilled, (state, action) => {
+        const updated = action.payload;
+        state.myVacancies = state.myVacancies.map((vacancy) =>
+          String(vacancy._id) === String(updated._id) ? updated : vacancy
+        );
+      })
+      .addCase(updateVacancyStatus.fulfilled, (state, action) => {
+        const updated = action.payload;
+        state.myVacancies = state.myVacancies.map((vacancy) =>
+          String(vacancy._id) === String(updated._id) ? updated : vacancy
+        );
+      })
+      .addCase(deleteVacancy.fulfilled, (state, action) => {
+        const removed = action.payload;
+        state.myVacancies = state.myVacancies.filter(
+          (vacancy) => String(vacancy._id) !== String(removed._id)
+        );
       });
   },
 });

@@ -17,7 +17,7 @@ const applyToVacancy = async (req, res) => {
     return res.status(400).json({ message: 'Invalid vacancy id' });
   }
 
-  const vacancy = await Vacancy.findById(vacancy_id);
+  const vacancy = await Vacancy.findOne({ _id: vacancy_id, deletedAt: null });
   if (!vacancy || vacancy.status !== 'active') {
     return res.status(404).json({ message: 'Vacancy not found or not active' });
   }
@@ -70,7 +70,8 @@ const getApplicationsForVacancy = async (req, res) => {
     return res.status(400).json({ message: 'Invalid vacancy id' });
   }
 
-  const vacancy = await Vacancy.findById(vacancyId).populate('company_id', 'name verified');
+  const vacancy = await Vacancy.findOne({ _id: vacancyId, deletedAt: null })
+    .populate('company_id', 'name verified');
 
   if (!vacancy) {
     return res.status(404).json({ message: 'Vacancy not found' });
@@ -175,7 +176,9 @@ const getRecruiterApplicationsBoard = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
   }
 
-  const vacancyQuery = req.user.role === 'admin' ? {} : { recruiter_id: req.user.id };
+  const vacancyQuery = req.user.role === 'admin'
+    ? { deletedAt: null }
+    : { recruiter_id: req.user.id, deletedAt: null };
   const vacancies = await Vacancy.find(vacancyQuery).select('_id title recruiter_id company_id');
 
   if (!vacancies.length) {
@@ -192,6 +195,9 @@ const getRecruiterApplicationsBoard = async (req, res) => {
   const board = { new: [], interview: [], offer: [], rejected: [] };
 
   applications.forEach((application) => {
+    // withdrawn_by_company applications are intentionally excluded from the
+    // recruiter board — they require no action and belong to deleted vacancies.
+    if (!board[application.status]) return;
     const candidate = application.candidate_id;
     const reveal = canRevealCandidatePII(application.status);
     const vacancy = vacancyById.get(String(application.vacancy_id));

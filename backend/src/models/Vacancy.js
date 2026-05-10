@@ -42,6 +42,10 @@ const vacancySchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'paused', 'closed'],
       default: 'active'
+    },
+    deletedAt: {
+      type: Date,
+      default: null
     }
   },
   {
@@ -49,6 +53,8 @@ const vacancySchema = new mongoose.Schema(
   }
 );
 
-vacancySchema.index({ company_id: 1, status: 1 });
+vacancySchema.index({ company_id: 1, status: 1, deletedAt: 1 });
+vacancySchema.index({ status: 1, deletedAt: 1 });
+vacancySchema.index({ recruiter_id: 1, deletedAt: 1 });
 
 module.exports = mongoose.model('Vacancy', vacancySchema);

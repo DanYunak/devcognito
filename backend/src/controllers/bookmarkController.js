@@ -21,7 +21,7 @@ const addBookmark = async (req, res) => {
 
   const { vacancy_id } = req.body;
 
-  const vacancy = await Vacancy.findById(vacancy_id);
+  const vacancy = await Vacancy.findOne({ _id: vacancy_id, deletedAt: null });
   if (!vacancy || vacancy.status !== 'active') {
     return res.status(404).json({ message: 'Vacancy not found or not active' });
   }
