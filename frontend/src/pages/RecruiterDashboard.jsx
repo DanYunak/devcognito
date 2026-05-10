@@ -40,6 +40,7 @@ export default function RecruiterDashboard() {
   } = useSelector((state) => state.vacancies);
 
   const [showForm, setShowForm] = useState(false);
+  const [showVacancies, setShowVacancies] = useState(true);
   const [form, setForm] = useState(EMPTY_VACANCY);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -200,27 +201,35 @@ export default function RecruiterDashboard() {
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-800">My Vacancies</h2>
-            <span className="text-xs text-slate-500">
-              {myVacancies.length} total
-            </span>
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold text-slate-800">My Vacancies</h2>
+              <span className="text-xs text-slate-500">
+                {myVacancies.length} total
+              </span>
+            </div>
+            <button
+              onClick={() => setShowVacancies((prev) => !prev)}
+              className="text-xs border border-slate-200 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-50"
+            >
+              {showVacancies ? 'Hide list' : 'Show list'}
+            </button>
           </div>
 
-          {vacancyError && (
+          {showVacancies && vacancyError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
               {vacancyError}
             </div>
           )}
 
-          {vacanciesLoading ? (
+          {showVacancies && vacanciesLoading ? (
             <div className="flex justify-center py-10">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600" />
             </div>
-          ) : myVacancies.length === 0 ? (
+          ) : showVacancies && myVacancies.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-6 text-sm text-slate-500">
               No vacancies yet. Create your first vacancy above.
             </div>
-          ) : (
+          ) : showVacancies ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {myVacancies.map((vacancy) => {
                 const isEditing = editVacancyId === vacancy._id;
@@ -380,7 +389,7 @@ export default function RecruiterDashboard() {
                 );
               })}
             </div>
-          )}
+          ) : null}
         </div>
 
         {showForm && (
