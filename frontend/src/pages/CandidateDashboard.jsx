@@ -69,7 +69,10 @@ export default function CandidateDashboard() {
   const [coverLetters, setCoverLetters] = useState({});
   const [applyingTo, setApplyingTo] = useState(null);
   const [openChatApp, setOpenChatApp] = useState(null);
-  const [activeTab, setActiveTab] = useState('vacancies');
+  const [activeTab, setActiveTab] = useState(() => {
+    const stored = localStorage.getItem('candidateActiveTab');
+    return stored || 'vacancies';
+  });
   const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
   const [withdrawingId, setWithdrawingId] = useState(null);
 
@@ -78,6 +81,10 @@ export default function CandidateDashboard() {
     dispatch(fetchMyApplications());
     dispatch(fetchBookmarks());
   }, [dispatch]);
+
+  useEffect(() => {
+    localStorage.setItem('candidateActiveTab', activeTab);
+  }, [activeTab]);
 
   const appliedIds = new Set(
     myApplications.map((a) => String(a.vacancy_id?._id || a.vacancy_id))
