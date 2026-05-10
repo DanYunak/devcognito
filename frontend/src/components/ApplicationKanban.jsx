@@ -43,13 +43,12 @@ function ApplicationCard({ application, onStatusChange }) {
   const transitions = STATUS_TRANSITIONS[application.status] || [];
 
   const handleViewResume = async () => {
-    const resumePath = candidate?.profile?.resumePath;
-    if (!resumePath) return;
-    const filename = resumePath.split('/').pop();
+    const resumePublicId = candidate?.profile?.resumePublicId;
+    if (!resumePublicId) return;
     setResumeError('');
     try {
-      const response = await api.get(`/users/resume/${filename}`, {
-        responseType: 'blob',
+      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`, {
+        responseType: 'blob'
       });
       const url = URL.createObjectURL(response.data);
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -113,7 +112,7 @@ function ApplicationCard({ application, onStatusChange }) {
           {isRevealed && candidate.profile.contacts && (
             <p>📞 {candidate.profile.contacts}</p>
           )}
-          {isRevealed && candidate.profile.resumePath && (
+          {isRevealed && candidate.profile.resumePublicId && (
             <button
               type="button"
               onClick={handleViewResume}

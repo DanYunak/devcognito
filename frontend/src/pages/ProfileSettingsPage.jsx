@@ -97,12 +97,11 @@ export default function ProfileSettingsPage() {
   };
 
   const handleViewResume = async () => {
-    const resumePath = user?.profile?.resumePath;
-    if (!resumePath) return;
-    const filename = resumePath.split('/').pop();
+    const resumePublicId = user?.profile?.resumePublicId;
+    if (!resumePublicId) return;
     try {
-      const response = await api.get(`/users/resume/${filename}`, {
-        responseType: 'blob',
+      const response = await api.get(`/users/resume/${encodeURIComponent(resumePublicId)}`, {
+        responseType: 'blob'
       });
       const url = URL.createObjectURL(response.data);
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -226,11 +225,9 @@ export default function ProfileSettingsPage() {
           <div className="mt-8 border-t border-slate-200 pt-6">
             <h3 className="text-sm font-semibold text-slate-800 mb-2">Resume</h3>
             <div className="text-sm text-slate-600 mb-3">
-              {user?.profile?.resumePath ? (
+              {user?.profile?.resumePublicId ? (
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span>
-                    Current resume: {user.profile.resumePath.split('/').pop()}
-                  </span>
+                  <span>Resume uploaded.</span>
                   <button
                     type="button"
                     onClick={handleViewResume}

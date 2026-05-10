@@ -1,11 +1,11 @@
 const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const path = require('path');
+const { PassThrough } = require('stream');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const { jwtSecret, jwtExpiresIn } = require('../config/env');
+const cloudinary = require('../config/cloudinary');
 
 const signToken = (user) =>
   jwt.sign(
@@ -166,20 +166,51 @@ const uploadResume = async (req, res) => {
     return res.status(400).json({ message: 'Resume file is required' });
   }
 
-  const oldPath = user.profile?.resumePath;
-  if (oldPath) {
-    const absoluteOldPath = path.join(__dirname, '..', '..', oldPath);
-    fs.unlink(absoluteOldPath, (err) => {
-      if (err && process.env.NODE_ENV !== 'production') {
+  let uploadResult;
+  try {
+    uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'resumes',
+        resource_type: 'raw',
+        use_filename: true,
+        unique_filename: true
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
+      }
+    );
+
+      const bufferStream = new PassThrough();
+      bufferStream.on('error', reject);
+      bufferStream.end(req.file.buffer);
+      bufferStream.pipe(stream);
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Resume upload failed' });
+  }
+
+  const oldPublicId = user.profile?.resumePublicId;
+  if (oldPublicId) {
+    cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' }).catch((err) => {
+      if (process.env.NODE_ENV !== 'production') {
         console.warn('Failed to remove old resume:', err.message);
       }
     });
   }
 
-  user.profile.resumePath = req.file.path;
+  user.profile.resumePath = uploadResult.secure_url;
+  user.profile.resumePublicId = uploadResult.public_id;
   await user.save();
 
-  return res.json({ resumePath: req.file.path });
+  return res.json({
+    resumePath: uploadResult.secure_url,
+    resumePublicId: uploadResult.public_id
+  });
 };
 
 module.exports = { register, login, me, updateMe, uploadResume };
