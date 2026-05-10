@@ -144,7 +144,7 @@ export default function CandidateDashboard() {
               }`}
             >
               {tab === 'vacancies'
-                ? `Matched Vacancies (${vacancies.length})`
+                ? `Matched Vacancies (${pagination.total || vacancies.length})`
                 : tab === 'applications'
                 ? `My Applications (${myApplications.length})`
                 : `Bookmarks (${bookmarks.length})`}
