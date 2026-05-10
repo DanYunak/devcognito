@@ -55,6 +55,7 @@ export default function ProfileSettingsPage() {
     const result = await dispatch(updateProfile(payload));
     if (result.meta.requestStatus === 'fulfilled') {
       setSuccess(true);
+      navigate('/candidate');
     }
   };
 
