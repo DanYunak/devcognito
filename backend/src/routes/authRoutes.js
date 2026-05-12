@@ -7,7 +7,9 @@ const {
   login,
   me,
   updateMe,
-  uploadResume
+  uploadResume,
+  verifyEmail,
+  resendVerification
 } = require('../controllers/authController');
 const upload = require('../config/multer');
 const allowRoles = require('../middleware/roles');
@@ -64,6 +66,23 @@ router.post(
     body('password').notEmpty()
   ],
   asyncHandler(login)
+);
+
+router.post(
+  '/verify-email',
+  [
+    body('email').isEmail(),
+    body('code').isLength({ min: 6, max: 6 }).isNumeric()
+  ],
+  asyncHandler(verifyEmail)
+);
+
+router.post(
+  '/resend-verification',
+  [
+    body('email').isEmail()
+  ],
+  asyncHandler(resendVerification)
 );
 
 router.get('/me', auth, asyncHandler(me));

@@ -8,10 +8,34 @@ export const register = createAsyncThunk(
   async (formData, { rejectWithValue }) => {
     try {
       const { data } = await api.post('/auth/register', formData);
-      localStorage.setItem('token', data.token);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Registration failed');
+    }
+  }
+);
+
+export const verifyEmail = createAsyncThunk(
+  'auth/verifyEmail',
+  async ({ email, code }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/auth/verify-email', { email, code });
+      localStorage.setItem('token', data.token);
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Verification failed');
+    }
+  }
+);
+
+export const resendVerification = createAsyncThunk(
+  'auth/resendVerification',
+  async (email, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/auth/resend-verification', { email });
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Resend failed');
     }
   }
 );
@@ -79,15 +103,24 @@ const authSlice = createSlice({
     initialized: false,
     resumeUploading: false,
     resumeError: null,
+    pendingVerificationEmail: null,
+    verificationEmailSent: null,
+    verificationResent: false,
+    verificationError: null,
   },
   reducers: {
     logout(state) {
       state.user = null;
       state.token = null;
+      state.pendingVerificationEmail = null;
+      state.verificationEmailSent = null;
+      state.verificationResent = false;
+      state.verificationError = null;
       localStorage.removeItem('token');
     },
     clearError(state) {
       state.error = null;
+      state.verificationError = null;
     },
   },
   extraReducers: (builder) => {
@@ -109,11 +142,49 @@ const authSlice = createSlice({
 
     builder
       .addCase(register.pending, handlePending)
-      .addCase(register.fulfilled, handleFulfilled)
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.token ?? null;
+        state.pendingVerificationEmail = action.payload.user?.email || null;
+        state.verificationEmailSent = action.payload.emailSent ?? null;
+        state.initialized = true;
+      })
       .addCase(register.rejected, handleRejected)
       .addCase(login.pending, handlePending)
       .addCase(login.fulfilled, handleFulfilled)
       .addCase(login.rejected, handleRejected)
+      .addCase(verifyEmail.pending, (state) => {
+        state.loading = true;
+        state.verificationError = null;
+      })
+      .addCase(verifyEmail.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.pendingVerificationEmail = null;
+        state.verificationEmailSent = null;
+        state.initialized = true;
+      })
+      .addCase(verifyEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.verificationError = action.payload;
+      })
+      .addCase(resendVerification.pending, (state) => {
+        state.loading = true;
+        state.verificationError = null;
+        state.verificationResent = false;
+      })
+      .addCase(resendVerification.fulfilled, (state, action) => {
+        state.loading = false;
+        state.verificationResent = true;
+        state.verificationEmailSent = action.payload.emailSent ?? null;
+      })
+      .addCase(resendVerification.rejected, (state, action) => {
+        state.loading = false;
+        state.verificationError = action.payload;
+        state.verificationResent = false;
+      })
       .addCase(fetchMe.pending, (state) => {
         state.loading = true;
       })

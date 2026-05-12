@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { register, clearError } from '../features/auth/authSlice';
+import { register, clearError, verifyEmail, resendVerification } from '../features/auth/authSlice';
 
 const INITIAL_FORM = {
   role: 'candidate',
@@ -19,17 +19,36 @@ const INITIAL_FORM = {
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, user } = useSelector((state) => state.auth);
+  const {
+    loading,
+    error,
+    user,
+    pendingVerificationEmail,
+    verificationEmailSent,
+    verificationResent,
+    verificationError,
+  } = useSelector((state) => state.auth);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
 
   useEffect(() => {
-    if (user) {
+    if (user && user.emailVerified) {
       navigate(user.role === 'candidate' ? '/candidate' : '/recruiter', {
         replace: true,
       });
     }
     return () => dispatch(clearError());
   }, [user, navigate, dispatch]);
+
+  useEffect(() => {
+    if (pendingVerificationEmail) {
+      setShowVerification(true);
+    } else {
+      setShowVerification(false);
+      setVerifyCode('');
+    }
+  }, [pendingVerificationEmail]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,6 +91,17 @@ export default function RegisterPage() {
     }
 
     dispatch(register(payload));
+  };
+
+  const handleVerify = (e) => {
+    e.preventDefault();
+    if (!pendingVerificationEmail) return;
+    dispatch(verifyEmail({ email: pendingVerificationEmail, code: verifyCode }));
+  };
+
+  const handleResend = () => {
+    if (!pendingVerificationEmail) return;
+    dispatch(resendVerification(pendingVerificationEmail));
   };
 
   return (
@@ -239,6 +269,59 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      {showVerification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-slate-800">Verify your email</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              We sent a 6-digit code to <span className="font-medium">{pendingVerificationEmail}</span>.
+            </p>
+            {verificationEmailSent === false && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-4 py-3 mt-4">
+                Email could not be sent. You can try resending the code.
+              </div>
+            )}
+            {verificationError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mt-4">
+                {verificationError}
+              </div>
+            )}
+            <form onSubmit={handleVerify} className="mt-4 space-y-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Enter 6-digit code"
+              />
+              <button
+                type="submit"
+                disabled={loading || verifyCode.length !== 6}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                {loading ? 'Verifying…' : 'Verify email'}
+              </button>
+            </form>
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={loading}
+                className="text-indigo-600 hover:underline disabled:opacity-60"
+              >
+                Resend code
+              </button>
+              {verificationResent && (
+                <span className="text-emerald-600">Code sent</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,27 @@ const Application = require('../models/Application');
 const Vacancy = require('../models/Vacancy');
 const User = require('../models/User');
 const { canRevealCandidatePII, sanitizeCandidateForRecruiter } = require('../utils/anonymity');
+const { sendMail } = require('../config/mailer');
+
+const STATUS_LABELS = {
+  interview: 'Interview',
+  offer: 'Offer',
+  rejected: 'Rejected'
+};
+
+const buildStatusEmail = ({ email, vacancyTitle, status }) => {
+  const statusLabel = STATUS_LABELS[status] || status;
+  const subject = `Your application moved to "${statusLabel}"`;
+  const text = `Your application for "${vacancyTitle}" moved to "${statusLabel}".`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">
+      <p>Your application for <strong>${vacancyTitle}</strong> moved to <strong>${statusLabel}</strong>.</p>
+      <p>We will contact you if there are next steps.</p>
+    </div>
+  `;
+
+  return { subject, text, html, to: email };
+};
 
 const applyToVacancy = async (req, res) => {
   const errors = validationResult(req);
@@ -154,6 +175,27 @@ const updateApplicationStatus = async (req, res) => {
 
   const candidate = await User.findById(application.candidate_id).select('role email profile');
 
+  let emailSent = null;
+  if (status !== 'new' && candidate?.email) {
+    const mail = buildStatusEmail({
+      email: candidate.email,
+      vacancyTitle: vacancy.title || 'vacancy',
+      status
+    });
+    emailSent = true;
+    try {
+      await sendMail({
+        to: mail.to,
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html
+      });
+    } catch (mailErr) {
+      emailSent = false;
+      console.warn('Failed to send status email:', mailErr.message);
+    }
+  }
+
   return res.json({
     application: {
       _id: application._id,
@@ -167,7 +209,8 @@ const updateApplicationStatus = async (req, res) => {
         candidate,
         canReveal: canRevealCandidatePII(application.status)
       })
-    }
+    },
+    emailSent
   });
 };
 
