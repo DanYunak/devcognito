@@ -106,17 +106,14 @@ const register = async (req, res) => {
 
   const mail = buildVerifyEmail({ email: user.email, code: verifyCode });
   let emailSent = true;
-  try {
-    await sendMail({
-      to: user.email,
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html
-    });
-  } catch (mailErr) {
-    emailSent = false;
+  sendMail({
+    to: user.email,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html
+  }).catch((mailErr) => {
     console.warn('Failed to send verification email:', mailErr.message);
-  }
+  });
 
   return res.status(201).json({
     user: toAuthResponse(user),
@@ -222,18 +219,18 @@ const uploadResume = async (req, res) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: 'resumes',
-        resource_type: 'raw',
-        use_filename: true,
-        unique_filename: true
-      },
-      (error, result) => {
-        if (error) {
-          reject(error);
-          return;
+          resource_type: 'raw',
+          use_filename: true,
+          unique_filename: true
+        },
+        (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(result);
         }
-        resolve(result);
-      }
-    );
+      );
 
       const bufferStream = new PassThrough();
       bufferStream.on('error', reject);

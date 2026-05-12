@@ -183,17 +183,14 @@ const updateApplicationStatus = async (req, res) => {
       status
     });
     emailSent = true;
-    try {
-      await sendMail({
-        to: mail.to,
-        subject: mail.subject,
-        text: mail.text,
-        html: mail.html
-      });
-    } catch (mailErr) {
-      emailSent = false;
+    sendMail({
+      to: user.email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html
+    }).catch((mailErr) => {
       console.warn('Failed to send status email:', mailErr.message);
-    }
+    });
   }
 
   return res.json({

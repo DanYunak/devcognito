@@ -8,7 +8,10 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: env.smtpUser,
     pass: env.smtpPass
-  }
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 const sendMail = async ({ to, subject, html, text }) => {
