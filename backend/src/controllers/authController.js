@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { PassThrough } = require('stream');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
@@ -6,6 +7,8 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const { jwtSecret, jwtExpiresIn } = require('../config/env');
 const cloudinary = require('../config/cloudinary');
+const env = require('../config/env');
+const { sendMail } = require('../config/mailer');
 
 const signToken = (user) =>
   jwt.sign(
@@ -22,9 +25,36 @@ const toAuthResponse = (user) => ({
   id: String(user._id),
   role: user.role,
   email: user.email,
+  emailVerified: user.emailVerified,
   company_id: user.company_id,
   profile: user.profile
 });
+
+const buildVerifyEmail = ({ email, code }) => {
+  const verifyUrl = `${env.appBaseUrl}/verify-email?code=${code}&email=${encodeURIComponent(email)}`;
+  const subject = 'Confirm your email';
+  const text = `Your confirmation code: ${code}. You can also open: ${verifyUrl}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">
+      <p>Confirm your email to finish registration.</p>
+      <p><strong>Code: ${code}</strong></p>
+      <p>This code expires in 15 minutes.</p>
+      <p>If you did not create an account, ignore this email.</p>
+    </div>
+  `;
+
+  return { subject, text, html };
+};
+
+const generateVerifyCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+const setEmailVerifyCode = (user) => {
+  const code = generateVerifyCode();
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+  user.emailVerifyCode = codeHash;
+  user.emailVerifyCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+  return code;
+};
 
 const register = async (req, res) => {
   const errors = validationResult(req);
@@ -71,11 +101,27 @@ const register = async (req, res) => {
     company_id
   });
 
-  const token = signToken(user);
+  const verifyCode = setEmailVerifyCode(user);
+  await user.save();
+
+  const mail = buildVerifyEmail({ email: user.email, code: verifyCode });
+  let emailSent = true;
+  try {
+    await sendMail({
+      to: user.email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html
+    });
+  } catch (mailErr) {
+    emailSent = false;
+    console.warn('Failed to send verification email:', mailErr.message);
+  }
 
   return res.status(201).json({
-    token,
-    user: toAuthResponse(user)
+    user: toAuthResponse(user),
+    emailSent,
+    requiresVerification: true
   });
 };
 
@@ -95,6 +141,10 @@ const login = async (req, res) => {
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
     return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  if (!user.emailVerified) {
+    return res.status(403).json({ message: 'Email not verified', code: 'email_unverified' });
   }
 
   const token = signToken(user);
@@ -213,4 +263,82 @@ const uploadResume = async (req, res) => {
   });
 };
 
-module.exports = { register, login, me, updateMe, uploadResume };
+const verifyEmail = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { code, email } = req.body;
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    emailVerifyCode: codeHash,
+    emailVerifyCodeExpires: { $gt: new Date() }
+  }).select('+emailVerifyCode');
+
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired code' });
+  }
+
+  user.emailVerified = true;
+  user.emailVerifyCode = null;
+  user.emailVerifyCodeExpires = null;
+  await user.save();
+
+  const token = signToken(user);
+
+  return res.json({
+    message: 'Email verified',
+    token,
+    user: toAuthResponse(user)
+  });
+};
+
+const resendVerification = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { email } = req.body;
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  if (user.emailVerified) {
+    return res.status(200).json({ message: 'Email already verified' });
+  }
+
+  const verifyCode = setEmailVerifyCode(user);
+  await user.save();
+
+  const mail = buildVerifyEmail({ email: user.email, code: verifyCode });
+  let emailSent = true;
+  try {
+    await sendMail({
+      to: user.email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html
+    });
+  } catch (mailErr) {
+    emailSent = false;
+    console.warn('Failed to send verification email:', mailErr.message);
+  }
+
+  return res.json({ message: 'Verification email sent', emailSent });
+};
+
+module.exports = {
+  register,
+  login,
+  me,
+  updateMe,
+  uploadResume,
+  verifyEmail,
+  resendVerification
+};
