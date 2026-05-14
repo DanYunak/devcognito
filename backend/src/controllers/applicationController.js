@@ -184,7 +184,7 @@ const updateApplicationStatus = async (req, res) => {
     });
     emailSent = true;
     sendMail({
-      to: user.email,
+      to: candidate.email,
       subject: mail.subject,
       text: mail.text,
       html: mail.html

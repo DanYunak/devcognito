@@ -2,16 +2,13 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const required = [
-  'MONGO_URI',
-  'JWT_SECRET',
-  'CLOUDINARY_URL',
-  'SMTP_HOST',
-  'SMTP_PORT',
-  'SMTP_USER',
-  'SMTP_PASS',
-  'SMTP_FROM'
-];
+const requiredBase = ['MONGO_URI', 'JWT_SECRET', 'CLOUDINARY_URL'];
+
+const enableEmails = String(process.env.ENABLE_EMAILS || '').toLowerCase() === 'true';
+
+const required = enableEmails
+  ? [...requiredBase, 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM']
+  : requiredBase;
 
 required.forEach((key) => {
   if (!process.env[key]) {
@@ -31,5 +28,6 @@ module.exports = {
   smtpPort: Number(process.env.SMTP_PORT) || 587,
   smtpUser: process.env.SMTP_USER,
   smtpPass: process.env.SMTP_PASS,
-  smtpFrom: process.env.SMTP_FROM
+  smtpFrom: process.env.SMTP_FROM,
+  enableEmails
 };

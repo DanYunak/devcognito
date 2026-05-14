@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      ENABLE_EMAILS: "true"
+      MONGO_URI: mongodb://mongo:27017/it_jobs_platform
+      PORT: "5000"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:

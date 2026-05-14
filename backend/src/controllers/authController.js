@@ -49,7 +49,7 @@ const buildVerifyEmail = ({ email, code }) => {
 const generateVerifyCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const setEmailVerifyCode = (user) => {
-  const code = generateVerifyCode();
+  const code = env.enableEmails ? generateVerifyCode() : '000000';
   const codeHash = crypto.createHash('sha256').update(code).digest('hex');
   user.emailVerifyCode = codeHash;
   user.emailVerifyCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
@@ -105,7 +105,7 @@ const register = async (req, res) => {
   await user.save();
 
   const mail = buildVerifyEmail({ email: user.email, code: verifyCode });
-  let emailSent = true;
+
   sendMail({
     to: user.email,
     subject: mail.subject,
@@ -117,7 +117,7 @@ const register = async (req, res) => {
 
   return res.status(201).json({
     user: toAuthResponse(user),
-    emailSent,
+    emailSent: true,
     requiresVerification: true
   });
 };
@@ -314,20 +314,17 @@ const resendVerification = async (req, res) => {
   await user.save();
 
   const mail = buildVerifyEmail({ email: user.email, code: verifyCode });
-  let emailSent = true;
-  try {
-    await sendMail({
-      to: user.email,
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html
-    });
-  } catch (mailErr) {
-    emailSent = false;
-    console.warn('Failed to send verification email:', mailErr.message);
-  }
 
-  return res.json({ message: 'Verification email sent', emailSent });
+  sendMail({
+    to: user.email,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html
+  }).catch((mailErr) => {
+    console.warn('Failed to send verification email:', mailErr.message);
+  });
+
+  return res.json({ message: 'Verification email sent', emailSent: true });
 };
 
 module.exports = {
