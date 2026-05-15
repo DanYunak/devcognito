@@ -4,6 +4,7 @@
   "description": "Backend for anonymous IT job board platform",
   "main": "src/server.js",
   "type": "commonjs",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",

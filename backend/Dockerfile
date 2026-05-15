@@ -2,12 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+RUN corepack enable
 
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+COPY package.json pnpm-lock.yaml* ./
+
+RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
 
 COPY . .
 
 EXPOSE 5000
 
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
