@@ -18,6 +18,7 @@ const preloadedBoard = {
   interview:[makeApp('app_3', 'interview')],
   offer:    [],
   rejected: [],
+  withdrawn_by_company: [makeApp('app_4', 'withdrawn_by_company')],
 };
 
 const initialState = {
@@ -72,6 +73,14 @@ describe('applicationsSlice — updateStatus.fulfilled', () => {
       const state = applicationsReducer(initialState, fulfilled(updatedApp));
 
       const ids = state.board.rejected.map((a) => a._id);
+      expect(ids).toContain('app_1');
+    });
+
+    it('adds the updated app to the "withdrawn_by_company" column', () => {
+      const updatedApp = { ...makeApp('app_1', 'withdrawn_by_company') };
+      const state = applicationsReducer(initialState, fulfilled(updatedApp));
+
+      const ids = state.board.withdrawn_by_company.map((a) => a._id);
       expect(ids).toContain('app_1');
     });
   });
@@ -134,6 +143,15 @@ describe('applicationsSlice — updateStatus.fulfilled', () => {
       const state = applicationsReducer(initialState, fulfilled(updatedApp));
 
       expect(state.board.rejected).toHaveLength(0);
+    });
+
+    it('leaves the "withdrawn_by_company" column untouched when moving new → interview', () => {
+      const updatedApp = { ...makeApp('app_1', 'interview') };
+      const state = applicationsReducer(initialState, fulfilled(updatedApp));
+
+      const ids = state.board.withdrawn_by_company.map((a) => a._id);
+      expect(ids).toContain('app_4');
+      expect(ids).toHaveLength(1);
     });
 
     it('leaves the "interview" source card (app_3) when moving app_1 → offer', () => {

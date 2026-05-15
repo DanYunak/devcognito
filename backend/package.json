@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "jest",
     "seed": "node seed.js"
   },
   "keywords": [
@@ -33,6 +34,7 @@
     "socket.io": "^4.8.0"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
     "nodemon": "^3.1.7"
   }
 }

@@ -68,6 +68,18 @@ describe('sanitizeCandidateForRecruiter', () => {
       expect(result.profile.expectedSalary).toBe(85_000);
     });
 
+    it('clears resume metadata', () => {
+      const withResume = sanitizeCandidateForRecruiter({
+        candidate: makeCandidate({
+          profile: { resumePath: 'resume.pdf', resumePublicId: 'resume_123' },
+        }),
+        canReveal: false,
+      });
+
+      expect(withResume.profile.resumePath).toBeNull();
+      expect(withResume.profile.resumePublicId).toBeNull();
+    });
+
     it('still exposes _id and role', () => {
       expect(result._id).toBe('user_abc123');
       expect(result.role).toBe('candidate');
@@ -106,6 +118,18 @@ describe('sanitizeCandidateForRecruiter', () => {
       expect(result.profile.expectedSalary).toBe(85_000);
     });
 
+    it('exposes resume metadata', () => {
+      const withResume = sanitizeCandidateForRecruiter({
+        candidate: makeCandidate({
+          profile: { resumePath: 'resume.pdf', resumePublicId: 'resume_123' },
+        }),
+        canReveal: true,
+      });
+
+      expect(withResume.profile.resumePath).toBe('resume.pdf');
+      expect(withResume.profile.resumePublicId).toBe('resume_123');
+    });
+
     it('exposes _id and role', () => {
       expect(result._id).toBe('user_abc123');
       expect(result.role).toBe('candidate');
@@ -139,6 +163,8 @@ describe('sanitizeCandidateForRecruiter', () => {
       });
       expect(revealed.profile.fullName).toBe('');
       expect(revealed.profile.contacts).toBe('');
+      expect(revealed.profile.resumePath).toBeNull();
+      expect(revealed.profile.resumePublicId).toBeNull();
     });
   });
 });
