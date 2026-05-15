@@ -89,6 +89,15 @@ pnpm install
 pnpm dev
 ```
 
+### 🧩 .env для frontend
+
+Створіть файл `frontend/.env` і додайте:
+
+```bash
+VITE_API_URL=http://localhost:5001/api
+VITE_SOCKET_URL=http://localhost:5001
+```
+
 ---
 
 ## ⚙️ Змінні середовища (backend/.env)
