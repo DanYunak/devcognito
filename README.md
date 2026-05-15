@@ -43,11 +43,13 @@ _Курсова робота з дисципліни «Проектування 
 
 ## 📁 Структура проєкту
 
+```
 Devcognito/
-├── backend/ # API + бізнес-логіка
-├── frontend/ # React-клієнт
-├── docker-compose.yml # Локальний запуск сервісів
+├── backend/            # API + бізнес-логіка
+├── frontend/           # React-клієнт
+├── docker-compose.yml  # Локальний запуск сервісів
 └── README.md
+```
 
 ---
 
